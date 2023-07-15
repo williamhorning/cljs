@@ -11,7 +11,7 @@ Install `@williamhorning/cloudlink` using your favourite package manager or impo
 ## Usage
 
 ```ts
-import CloudlinkClient from "@williamhorning/cloudlink"; // or "https://deno.land/x/cloudlink@4.1.1";
+import CloudlinkClient from "@williamhorning/cloudlink"; // or "https://deno.land/x/cloudlink@4.1.1/src/index.ts";
 
 // setup a new client
 let cloudlink = new CloudlinkClient({
