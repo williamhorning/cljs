@@ -1,0 +1,23 @@
+{
+  "name": "@williamhorning/cloudlink",
+  "version": "4.1.1",
+  "description": "A Cloudlink client written in Typescript",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "github:williamhorning/cloudlink"
+  },
+  "scripts": {
+    "build": "tsc && esbuild --target=esnext --outdir=dist src/*",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.1.6",
+    "esbuild": "^0.18.13"
+  },
+  "optionalDependencies": {
+    "ws": "^8.13.0"
+  }
+}
