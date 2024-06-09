@@ -16,5 +16,5 @@ jobs:
           deno-version: v1.42.0
       - run: deno run -A .github/workflows/release.ts
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: deno publish
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: deno publish --allow-dirty

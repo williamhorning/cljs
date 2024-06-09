@@ -66,4 +66,7 @@ new Deno.Command("npm", {
   stdin: "inherit",
   stdout: "inherit",
   stderr: "inherit",
+  env: {
+    NPM_TOKEN: Deno.env.get("NPM_TOKEN") || "",
+  }
 }).outputSync();
