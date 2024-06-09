@@ -1,0 +1,13 @@
+{
+  "name": "@jersey/cloudlink",
+  "version": "4.1.2",
+  "exports": "./src/index.ts",
+  "exclude": [
+    ".github",
+    "CHANGELOG.md",
+    "package.json",
+    "package-lock.json",
+    "ts-config.json"
+  ],
+  "lock": false
+}

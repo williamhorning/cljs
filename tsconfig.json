@@ -1,13 +1,11 @@
 {
-  "compilerOptions": {
-    "target": "esnext",
-    "esModuleInterop": true,
-    "lib": ["esnext", "dom"],
-    "module": "ESNext",
-    "moduleResolution": "NodeNext",
-    "outDir": "dist",
-    "declaration": true,
-    "emitDeclarationOnly": true
-  },
-  "exclude": ["dist/node_modules", "dist"]
+    "compilerOptions": {
+        "allowImportingTsExtensions": true,
+        "declaration": true,
+        "lib": ["ESNext", "DOM"],
+        "target": "ESNext",
+        "module": "ESNext",
+        "outDir": "dist"
+    },
+    "files": ["src/index.ts"],
 }

@@ -2,6 +2,11 @@
 
 This changelog doesn't include changes to versions of Cloudlink published under the `@wgyt/cloudlink` package that was used for all versions prior to 4.0.0.
 
+## 4.1.2
+
+- Publish to JSR
+- Redo CloudlinkClient and types
+
 ## 4.1.1
 
 - Support Node.js without requiring monkeypatching `globalThis`

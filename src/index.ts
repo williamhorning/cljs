@@ -1,108 +1,174 @@
-import { ws } from "./ws.js";
+import type {
+  CloudlinkClientOptions,
+  CloudlinkEvents,
+  CloudlinkPacket,
+  CloudlinkUser,
+} from "./types.ts";
 
-type anything = string | number | { [key: string]: any } | any[];
+/** A client for Cloudlink servers */
+class CloudlinkClient {
+  /** Socket used to connect to the Cloudlink server */
+  private readonly socket: typeof WebSocket.prototype;
+  /** Event listeners */
+  private readonly listeners: {
+    [key in keyof CloudlinkEvents]?: ((data: CloudlinkEvents[key]) => void)[];
+  } = {};
+  /** The options used to connect to cloudlink */
+  readonly options: CloudlinkClientOptions;
+  /** The client IP returned by the server */
+  client_ip = "";
+  /** The user object given by the server */
+  client_obj = {} as Partial<CloudlinkUser>;
+  /** The MOTD provided by the server */
+  motd = "";
+  /** The version of the server */
+  server_ver = "";
+  /** The users currently connected to the server */
+  ulist = [] as Partial<CloudlinkUser>[];
+  /** Whether the socket is alive */
+  alive = true;
 
-export type CloudlinkClientOptions = {
-  url: string | URL;
-  log: boolean;
-};
-
-export type CloudlinkPacket = {
-  cmd: string;
-  name?: string | number;
-  val?: any;
-  id?: anything;
-  rooms?: anything | anything[];
-  listener?: string | number;
-  code?: string;
-  code_id?: number;
-};
-
-export class CloudlinkClient {
-  private _websocket: typeof ws.prototype;
-  motd?: string;
-  ulist?: (string | { [key: string]: any })[];
-  server_ver: string;
-  options: CloudlinkClientOptions;
-  listeners: { event: string; callback: Function }[] = [];
-  constructor(options: CloudlinkClientOptions) {
-    this.options = options;
-    this._setup();
+  /**
+   * Connect to a Cloudlink server
+   * @param opts The options to connect to the server
+   */
+  static async connect(
+    opts: CloudlinkClientOptions | string,
+  ): Promise<CloudlinkClient> {
+    const options = typeof opts === "string" ? { url: opts, log: false } : opts;
+    const socket =
+      new (globalThis.WebSocket ? WebSocket : ((await import("ws")).default))(
+        options.url,
+      );
+    await new Promise((resolve) => socket.onopen = resolve);
+    return new CloudlinkClient(socket, options);
   }
-  get status() {
-    return this._websocket.readyState;
-  }
+
+  /**
+   * Send a packet to the server
+   * @param packet The packet to send to the server
+   */
   send(packet: CloudlinkPacket) {
-    this._websocket.send(JSON.stringify(packet));
-  }
-  emit(event: string, data?: any) {
-    if (this.options.log)
-      console.log(`[Cloudlink] Emitting "${event}" event:`, data);
-    for (let listener of this.listeners) {
-      if (!(listener.event === event)) continue;
-      listener.callback(data);
+    if (!this.alive) {
+      throw new Error("socket is not connected");
     }
+    this.socket.send(JSON.stringify(packet));
   }
-  on(event: string, callback: Function) {
-    if (this.options.log)
-      console.log(`[Cloudlink] Registered "${event}" handler:`, callback);
-    this.listeners.push({ event, callback });
+
+  /**
+   * Listen for an event
+   * @param event The event to listen for
+   * @param listener The listener for the event
+   */
+  on<T extends keyof CloudlinkEvents>(
+    event: T,
+    listener: (data: CloudlinkEvents[T]) => void,
+  ) {
+    if (!this.listeners[event]) this.listeners[event] = [];
+    this.listeners[event]?.push(listener);
   }
-  messageHandle(data: CloudlinkPacket) {
-    if (data.cmd == "ulist" && data.val.method) {
-      if (data.val.method == "set") {
-        this.ulist = data.val.val;
-      } else if (
-        data.val.method == "add" &&
-        !this.ulist.includes(data.val.val)
-      ) {
-        this.ulist.push(data.val.val);
-      } else if (
-        data.val.method == "remove" &&
-        this.ulist.includes(data.val.val)
-      ) {
-        this.ulist.splice(this.ulist.indexOf(data.val.val), 1);
-      }
-    } else if (data.cmd == "ulist") {
-      this.ulist = data.val;
-    } else if (data.cmd == "motd") {
-      this.motd = data.val;
-    } else if (data.cmd == "server_version") {
-      this.server_ver = data.val;
-    }
-    this.emit(data.cmd, data);
-    this.emit("packet", data);
-  }
-  connect(options?: CloudlinkClientOptions) {
-    this.options = options || this.options;
-    this._setup();
-  }
+
+  /**
+   * Disconnect from the server
+   */
   disconnect() {
-    this._websocket.close();
-    delete this.motd;
-    delete this.ulist;
-    delete this.server_ver;
+    this.socket.close();
+    this.alive = false;
   }
-  private _setup() {
-    this._websocket = new ws(this.options.url);
-    this._websocket.addEventListener("open", () => {
-      while (this._websocket.readyState !== 1) {}
-      this.emit("open");
-      this.send({ cmd: "handshake" });
+
+  /**
+   * Setup event listeners
+   * @private
+   */
+  private constructor(
+    socket: typeof WebSocket.prototype,
+    options: CloudlinkClientOptions,
+  ) {
+    this.options = options;
+    this.socket = socket;
+
+    this.log("connected to cloudlink server", this.socket.url);
+
+    this.send({
+      cmd: "handshake",
+      val: { language: "typescript", version: "4.1.2" },
     });
-    this._websocket.addEventListener("close", (closeEvent) => {
-      this.emit("close", {
+
+    this.log("sent handshake packet");
+
+    this.emit("socket_open", undefined);
+
+    this.socket.addEventListener("close", (closeEvent) => {
+      this.log("socket closed", closeEvent);
+      this.alive = false;
+      this.emit("socket_close", {
         clean: closeEvent.wasClean,
         code: closeEvent.code,
       });
     });
-    this._websocket.addEventListener("error", (errorEvent) => {
-      this.emit("wserror", errorEvent);
+
+    this.socket.addEventListener("error", (errorEvent) => {
+      this.alive = false;
+      this.log("socket error", errorEvent);
+      this.emit("socket_error", errorEvent);
     });
-    this._websocket.addEventListener("message", (message) =>
-      this.messageHandle(JSON.parse(message.data))
+
+    this.socket.addEventListener(
+      "message",
+      (message) => this.handle_message(JSON.parse(message.data)),
     );
+  }
+
+  /**
+   * Log various stuff
+   * @private
+   */
+  private log(...args: unknown[]) {
+    if (this.options.log) {
+      console.debug("[Cloudlink]", ...args);
+    }
+  }
+
+  /**
+   * Emit an event
+   * @private
+   */
+  private emit<T extends keyof CloudlinkEvents, V extends CloudlinkEvents[T]>(
+    event: T,
+    data: V,
+  ) {
+    this.listeners[event]?.forEach((listener) => listener(data));
+  }
+
+  /**
+   * Handle a message from the server
+   * @private
+   */
+  private handle_message(data: CloudlinkPacket) {
+    this.log("received packet", data);
+
+    this.emit(`cmd-${data.cmd}`, data);
+
+    if (data.listener) this.emit(`listener-${data.listener}`, data);
+
+    if (data.cmd === "motd") {
+      this.motd = data.val as string;
+    } else if (data.cmd === "server_version") {
+      this.server_ver = data.val as string;
+    } else if (data.cmd === "client_ip") {
+      this.client_ip = data.val as string;
+    } else if (data.cmd === "client_obj") {
+      this.client_obj = data.val as unknown as CloudlinkUser;
+    } else if (data.cmd === "ulist") {
+      if (data.mode! === "add") {
+        this.ulist.push(data.val as unknown as CloudlinkUser);
+      } else if (data.mode! === "remove") {
+        this.ulist = this.ulist.filter((u) => u.id !== data.val);
+      } else {
+        this.ulist = data.val as unknown as CloudlinkUser[];
+      }
+    }
   }
 }
 
-export default CloudlinkClient;
+export { CloudlinkClient, CloudlinkClient as default };
