@@ -44,7 +44,7 @@ const pkg = {
   "types": "index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/williamhorning/cloudlink.git"
+    "url": "https://github.com/meower-media-co/CLJS"
   },
   "optionalDependencies": {
     "ws": "^8.13.0"
