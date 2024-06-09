@@ -14,7 +14,13 @@ jobs:
       - uses: denoland/setup-deno@v1
         with:
           deno-version: v1.42.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+      - run: deno publish
       - run: deno run -A .github/workflows/release.ts
+      - run: npm publish --provenance --access public
+        working-directory: ./build
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: deno publish --allow-dirty
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

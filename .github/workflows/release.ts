@@ -57,16 +57,3 @@ Deno.writeTextFileSync("dist/package.json", JSON.stringify(pkg, null, 2));
 Deno.copyFileSync("README.md", "dist/README.md");
 Deno.copyFileSync("LICENSE", "dist/LICENSE");
 Deno.copyFileSync("logo.svg", "dist/logo.svg");
-
-/** publish to npm */
-
-new Deno.Command("npm", {
-  args: ["publish", "--access", "public"],
-  cwd: "dist",
-  stdin: "inherit",
-  stdout: "inherit",
-  stderr: "inherit",
-  env: {
-    NPM_TOKEN: Deno.env.get("NPM_TOKEN") || "",
-  }
-}).outputSync();
